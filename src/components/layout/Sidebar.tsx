@@ -15,11 +15,12 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { icon: "[>]", label: "Dashboard", href: "/play" },
-  { icon: "[◎]", label: "Jugar", href: "/play/matchmaking" },
-  { icon: "[◈]", label: "Campaña", href: "/play/campaign" },
-  { icon: "[▤]", label: "Pokédex", href: "/play/pokedex" },
-  { icon: "[↟]", label: "Rankings", href: "/play/leaderboard" },
-  { icon: "[◉]", label: "Perfil", href: "/play/profile" },
+  { icon: "[◎]", label: "Jugar", href: "/matchmaking" },
+  { icon: "[◈]", label: "Campaña", href: "/campaign" },
+  { icon: "[▤]", label: "Pokédex", href: "/pokedex" },
+  { icon: "[↟]", label: "Rankings", href: "/leaderboard" },
+  { icon: "[◉]", label: "Perfil", href: "/profile" },
+  { icon: "[#]", label: "Comunidad", href: "/community", badge: "NUEVO" },
 ];
 
 interface SidebarProps {
@@ -39,7 +40,7 @@ export default function Sidebar({
 
   function isActive(href: string) {
     if (href === "/play") return pathname === "/play";
-    return pathname.startsWith(href);
+    return pathname === href || pathname.startsWith(href + "/");
   }
 
   return (
@@ -173,6 +174,10 @@ export default function Sidebar({
             <span className="text-matrix-green/60">AES-256</span>
           </div>
         </div>
+        <p className="mt-3 text-[8px] font-mono text-matrix-green/15 text-center leading-relaxed">
+          © 2025 ★ zTryStopMySkills ★<br />
+          HackQuest — Todos los derechos reservados
+        </p>
 
         <Link
           href="/api/auth/logout"

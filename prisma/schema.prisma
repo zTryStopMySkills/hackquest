@@ -139,6 +139,8 @@ model User {
   profileTitle       ProfileTitle        @default(NONE)
   bannerType         BannerType          @default(NONE)
   dailyBonusClaimed  DateTime?
+  chatNickname       String?
+  lastChatMessageAt  DateTime?
   createdAt          DateTime            @default(now())
   updatedAt          DateTime            @updatedAt
   lastActiveAt       DateTime            @default(now())
@@ -151,6 +153,7 @@ model User {
   pokedexEntries     PokedexEntry[]
   achievements       Achievement[]
   eloHistory         EloHistory[]
+  communityMessages  CommunityMessage[]
 
   @@index([rank])
   @@index([elo])
@@ -351,4 +354,18 @@ model EloHistory {
   @@index([userId])
   @@index([createdAt])
   @@index([userId, createdAt])
+}
+
+model CommunityMessage {
+  id          String   @id @default(cuid())
+  userId      String
+  displayName String
+  content     String   @db.VarChar(300)
+  rank        Rank
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@index([userId])
 }

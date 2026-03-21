@@ -265,9 +265,17 @@ export default function HomePage() {
 
         {/* Footer */}
         <footer className="px-8 py-5 border-t border-military-border/50 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p className="text-matrix-green/25 text-[10px] font-mono tracking-widest uppercase">
-            HackQuest — Plataforma de formación en ciberseguridad — Uso educativo
-          </p>
+          <div className="flex flex-col gap-1">
+            <p className="text-matrix-green/40 text-[10px] font-mono tracking-widest uppercase">
+              HackQuest — Plataforma de formación en ciberseguridad — Uso educativo
+            </p>
+            <p
+              className="text-matrix-green/30 text-[10px] font-mono tracking-widest"
+              style={{ textShadow: "0 0 4px rgba(0,255,65,0.2)" }}
+            >
+              © 2025 ★ zTryStopMySkills ★ — Todos los derechos reservados
+            </p>
+          </div>
           <p className="text-matrix-green/20 text-[10px] font-mono">
             Todas las actividades de hacking se realizan en entornos controlados
           </p>
