@@ -1,0 +1,354 @@
+// HackQuest - Cybersecurity Game
+// Prisma Schema — PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Rank {
+  SCRIPT_KIDDIE
+  JUNIOR
+  PENTESTER
+  RED_TEAM
+  ELITE_HACKER
+  LEGEND
+}
+
+enum EloState {
+  TILTED
+  COLD
+  COOLING
+  STABLE
+  WARMING
+  HOT
+  ON_FIRE
+}
+
+enum CampaignDifficulty {
+  HARD
+  MEDIUM
+  EXPERT
+}
+
+enum ProfileTitle {
+  NONE
+  SECURITY
+  HACKER
+  THE_ONE
+}
+
+enum BannerType {
+  NONE
+  SECURITY_BLUE
+  SECURITY_CYAN
+  HACKER_MATRIX
+  HACKER_GOLD
+  THE_ONE_RED
+}
+
+enum Branch {
+  WEB_HACKING
+  NETWORKS
+  CRYPTOGRAPHY
+  FORENSICS
+  SYSTEMS
+}
+
+enum Difficulty {
+  TRIVIAL
+  EASY
+  MEDIUM
+  HARD
+  EXPERT
+  LEGENDARY
+}
+
+enum ChallengeType {
+  PUZZLE
+  SANDBOX
+}
+
+enum MatchMode {
+  RACE
+  TURNS
+  RED_VS_BLUE
+}
+
+enum MatchStatus {
+  WAITING
+  IN_PROGRESS
+  FINISHED
+}
+
+enum TeamColor {
+  RED
+  BLUE
+}
+
+enum Severity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum AchievementType {
+  CAMPAIGN_HARD
+  CAMPAIGN_MEDIUM
+  CAMPAIGN_EXPERT
+  DAILY_STREAK
+  FIRST_BLOOD
+  PERFECT_SOLVE
+  ELO_MILESTONE
+  RANK_UP
+  BRANCH_MASTERY
+  POKEDEX_COMPLETE
+  WIN_STREAK
+  SPEED_DEMON
+  NO_HINTS
+  LEGEND_RANK
+}
+
+// ---------------------------------------------------------------------------
+// Models
+// ---------------------------------------------------------------------------
+
+model User {
+  id                 String              @id @default(cuid())
+  username           String              @unique
+  email              String              @unique
+  passwordHash       String
+  avatarUrl          String?
+  rank               Rank                @default(SCRIPT_KIDDIE)
+  points             Int                 @default(0)
+  elo                Int                 @default(1000)
+  eloState           EloState            @default(STABLE)
+  winStreak          Int                 @default(0)
+  lossStreak         Int                 @default(0)
+  isPremium          Boolean             @default(false)
+  campaignDifficulty CampaignDifficulty?
+  campaignChapter    Int                 @default(0)
+  profileTitle       ProfileTitle        @default(NONE)
+  bannerType         BannerType          @default(NONE)
+  dailyBonusClaimed  DateTime?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  lastActiveAt       DateTime            @default(now())
+
+  // Relations
+  skillBranches      SkillBranch[]
+  challengeAttempts  ChallengeAttempt[]
+  matchPlayers       MatchPlayer[]
+  campaignProgress   CampaignProgress[]
+  pokedexEntries     PokedexEntry[]
+  achievements       Achievement[]
+  eloHistory         EloHistory[]
+
+  @@index([rank])
+  @@index([elo])
+  @@index([points])
+  @@index([email])
+  @@index([username])
+}
+
+model SkillBranch {
+  id                   String   @id @default(cuid())
+  userId               String
+  branch               Branch
+  level                Int      @default(1)
+  xp                   Int      @default(0)
+  unlockedChallenges   String[]
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, branch])
+  @@index([userId])
+  @@index([branch])
+}
+
+model Challenge {
+  id               String        @id @default(cuid())
+  slug             String        @unique
+  title            String
+  description      String
+  branch           Branch
+  difficulty       Difficulty
+  type             ChallengeType
+  timeLimitSeconds Int
+  basePoints       Int           @default(100)
+  phases           Json
+  flag             String
+  briefing         String
+  debriefing       String
+  hints            Json
+  requiredRank     Rank
+  isFree           Boolean       @default(true)
+  orderInBranch    Int
+
+  // Relations
+  attempts ChallengeAttempt[]
+  matches  Match[]
+
+  @@index([branch])
+  @@index([difficulty])
+  @@index([requiredRank])
+  @@index([isFree])
+  @@index([branch, orderInBranch])
+}
+
+model ChallengeAttempt {
+  id               String    @id @default(cuid())
+  userId           String
+  challengeId      String
+  startedAt        DateTime  @default(now())
+  completedAt      DateTime?
+  solved           Boolean   @default(false)
+  score            Int       @default(0)
+  hintsUsed        Int       @default(0)
+  perfectSolve     Boolean   @default(false)
+  timeSpentSeconds Int       @default(0)
+  commandLog       Json      @default("[]")
+  reportContent    String?
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([challengeId])
+  @@index([userId, challengeId])
+  @@index([solved])
+  @@index([startedAt])
+}
+
+model Match {
+  id          String      @id @default(cuid())
+  mode        MatchMode
+  status      MatchStatus @default(WAITING)
+  challengeId String
+  maxPlayers  Int         @default(5)
+  timeLimit   Int
+  createdAt   DateTime    @default(now())
+  finishedAt  DateTime?
+
+  challenge Challenge     @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  players   MatchPlayer[]
+
+  @@index([status])
+  @@index([mode])
+  @@index([challengeId])
+  @@index([createdAt])
+}
+
+model MatchPlayer {
+  id       String    @id @default(cuid())
+  matchId  String
+  userId   String
+  position Int?
+  score    Int       @default(0)
+  progress Float     @default(0)
+  solved   Boolean   @default(false)
+  solvedAt DateTime?
+  team     TeamColor?
+
+  match Match @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([matchId, userId])
+  @@index([matchId])
+  @@index([userId])
+  @@index([team])
+}
+
+model CampaignProgress {
+  id           String             @id @default(cuid())
+  userId       String
+  chapterId    Int
+  difficulty   CampaignDifficulty
+  completedAt  DateTime?
+  attempts     Int                @default(0)
+  currentPhase Int                @default(0)
+  score        Int                @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, chapterId, difficulty])
+  @@index([userId])
+  @@index([chapterId])
+  @@index([difficulty])
+}
+
+model PokedexEntry {
+  id          String   @id @default(cuid())
+  userId      String
+  techniqueId String
+  unlockedAt  DateTime @default(now())
+  bestScore   Int      @default(0)
+  bestTime    Int      @default(0)
+  solvedPerfect Boolean @default(false)
+
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  technique Technique @relation(fields: [techniqueId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, techniqueId])
+  @@index([userId])
+  @@index([techniqueId])
+}
+
+model Technique {
+  id              String   @id @default(cuid())
+  slug            String   @unique
+  name            String
+  branch          Branch
+  severity        Severity
+  cvssScore       Float
+  description     String
+  howItWorks      String
+  realWorldImpact String
+  howToDefend     String
+  relatedCves     String[]
+  requiredRank    Rank
+
+  pokedexEntries PokedexEntry[]
+
+  @@index([branch])
+  @@index([severity])
+  @@index([requiredRank])
+}
+
+model Achievement {
+  id          String          @id @default(cuid())
+  userId      String
+  type        AchievementType
+  unlockedAt  DateTime        @default(now())
+  metadata    Json?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type])
+  @@index([userId])
+  @@index([type])
+  @@index([unlockedAt])
+}
+
+model EloHistory {
+  id        String   @id @default(cuid())
+  userId    String
+  elo       Int
+  change    Int
+  reason    String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+  @@index([userId, createdAt])
+}
