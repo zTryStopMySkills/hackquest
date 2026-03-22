@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
   if (mode === 'RED_VS_BLUE') {
     const rankIdx = RANK_ORDER.indexOf(user.rank as typeof RANK_ORDER[number]);
     const redTeamIdx = RANK_ORDER.indexOf('RED_TEAM');
-    if (rankIdx < redTeamIdx) {
+    if (rankIdx === -1 || rankIdx < redTeamIdx) {
       return NextResponse.json(
         { error: 'Necesitas rango Red Team para acceder a este modo' },
         { status: 403 }

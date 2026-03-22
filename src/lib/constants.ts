@@ -77,7 +77,7 @@ export const PERFECT_SOLVE_MULTIPLIER = 2.0;
 export const REPORT_BONUS = 30;
 export const DAILY_BONUS = 15;
 
-export const TESTER_CODE = '4l0p3c1411%';
+// TESTER_CODE is read from TESTER_CODE env var at runtime, not exported here.
 
 export const BRANCHES = [
   { id: 'WEB_HACKING', name: 'Web Hacking', icon: '◈', color: '#FF5722' },

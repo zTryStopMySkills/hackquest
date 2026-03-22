@@ -102,7 +102,8 @@ export async function POST(req: NextRequest) {
       }
 
       let hintPenalty = 0;
-      for (let i = 1; i <= hintsUsed; i++) {
+      const cappedHints = Math.min(hintsUsed, 3) as 1 | 2 | 3;
+      for (let i = 1; i <= cappedHints; i++) {
         hintPenalty += HINT_COSTS[i as 1 | 2 | 3] || 0;
       }
       baseGain = Math.round(baseGain * (1 - hintPenalty));
@@ -234,6 +235,11 @@ export async function POST(req: NextRequest) {
       });
 
       if (technique) {
+        const existingEntry = await prisma.pokedexEntry.findUnique({
+          where: { userId_techniqueId: { userId: user.id, techniqueId: technique.id } },
+          select: { bestScore: true, bestTime: true },
+        });
+
         await prisma.pokedexEntry.upsert({
           where: {
             userId_techniqueId: {
@@ -249,9 +255,9 @@ export async function POST(req: NextRequest) {
             solvedPerfect: isPerfect,
           },
           update: {
-            bestScore: { set: Math.max(pointsChange) },
-            bestTime: { set: Math.min(timeSpent) },
-            solvedPerfect: isPerfect || undefined,
+            bestScore: Math.max(existingEntry?.bestScore ?? 0, pointsChange),
+            bestTime: Math.min(existingEntry?.bestTime ?? timeSpent, timeSpent),
+            ...(isPerfect ? { solvedPerfect: true } : {}),
           },
         });
       }

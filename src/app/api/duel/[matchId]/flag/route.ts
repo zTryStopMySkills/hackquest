@@ -34,6 +34,10 @@ export async function POST(
     return NextResponse.json({ error: 'El duelo no está activo' }, { status: 400 });
   }
 
+  if (duel.winnerId !== null) {
+    return NextResponse.json({ correct: true, winner: false, message: 'Otro agente ya completó el objetivo primero.' }, { status: 409 });
+  }
+
   const isA = duel.attackerAId === session.userId;
   const isB = duel.attackerBId === session.userId;
   if (!isA && !isB) return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
@@ -150,6 +154,6 @@ export async function POST(
     eloChange: winnerEloChange,
     newElo: newWinnerElo,
     opponentPhasesCompleted: opponentPhasesCount,
-    scenario,
+    debriefing: scenario.debriefing,
   });
 }

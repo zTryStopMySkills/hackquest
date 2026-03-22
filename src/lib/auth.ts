@@ -2,7 +2,13 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { cookies } from 'next/headers';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'hackquest-dev-secret-change-in-production';
+const JWT_SECRET = (() => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret && process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET environment variable is required in production');
+  }
+  return secret || 'hackquest-dev-secret-change-in-production';
+})();
 const TOKEN_EXPIRY = '7d';
 
 export async function hashPassword(password: string): Promise<string> {

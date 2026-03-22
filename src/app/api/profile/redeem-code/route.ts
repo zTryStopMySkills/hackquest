@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
 import { prisma } from '@/lib/db';
-import { TESTER_CODE } from '@/lib/constants';
+const TESTER_CODE = process.env.TESTER_CODE || '';
 
 export async function POST(req: NextRequest) {
   const session = await getSession();

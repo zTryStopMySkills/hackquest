@@ -152,6 +152,18 @@ export async function PATCH(req: NextRequest) {
     // Only advance if completing the current unlocked chapter
     const newChapter = Math.max(user.campaignChapter, chapterId);
 
+    // Fetch current best score before upserting
+    const existingProgress = await prisma.campaignProgress.findUnique({
+      where: {
+        userId_chapterId_difficulty: {
+          userId: session.userId,
+          chapterId,
+          difficulty: user.campaignDifficulty,
+        },
+      },
+      select: { score: true },
+    });
+
     // Upsert CampaignProgress
     await prisma.campaignProgress.upsert({
       where: {
@@ -171,7 +183,7 @@ export async function PATCH(req: NextRequest) {
       },
       update: {
         completedAt: new Date(),
-        score: { set: Math.max(score) },
+        score: Math.max(existingProgress?.score ?? 0, score),
         attempts: { increment: 1 },
       },
     });

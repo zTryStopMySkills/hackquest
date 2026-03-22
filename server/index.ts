@@ -10,7 +10,9 @@ import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
 
 const prisma = new PrismaClient();
-const JWT_SECRET = process.env.JWT_SECRET || 'hackquest-dev-secret-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET || (process.env.NODE_ENV === 'production'
+  ? (() => { throw new Error('JWT_SECRET required in production'); })()
+  : 'hackquest-dev-secret-change-in-production');
 const PORT = Number(process.env.SOCKET_PORT ?? 3001);
 
 const httpServer = createServer();
@@ -244,6 +246,22 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     userSockets.delete(userId);
+
+    // Clean up match rooms
+    matchRooms.forEach((players, matchId) => {
+      players.delete(userId);
+      if (players.size === 0) matchRooms.delete(matchId);
+    });
+
+    // Clean up duel rooms and sabotages
+    duelRooms.forEach((players, matchId) => {
+      players.delete(userId);
+      if (players.size === 0) {
+        duelRooms.delete(matchId);
+        activeSabotages.delete(matchId);
+      }
+    });
+
     console.log(`[socket] ${username} desconectado`);
   });
 });
