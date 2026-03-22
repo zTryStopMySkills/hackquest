@@ -15,9 +15,32 @@ const JWT_SECRET = process.env.JWT_SECRET || (process.env.NODE_ENV === 'producti
   : 'hackquest-dev-secret-change-in-production');
 const PORT = Number(process.env.SOCKET_PORT ?? 3001);
 
-const httpServer = createServer();
+// Accept multiple allowed origins: local dev + Vercel production
+const allowedOrigins = [
+  process.env.NEXTAUTH_URL || 'http://localhost:3000',
+  'https://hackquest.vercel.app',
+  'https://www.hackquest.vercel.app',
+].filter(Boolean);
+
+const httpServer = createServer((req, res) => {
+  // Health check endpoint for Railway
+  if (req.url === '/health') {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('OK');
+    return;
+  }
+  res.writeHead(404);
+  res.end();
+});
+
 const io = new Server(httpServer, {
-  cors: { origin: process.env.NEXTAUTH_URL || 'http://localhost:3000', credentials: true },
+  cors: {
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+      callback(new Error('CORS not allowed'));
+    },
+    credentials: true,
+  },
 });
 
 // Map userId → socket.id

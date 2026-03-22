@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback, use } from 'react';
+import { useState, useEffect, useCallback, use, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Terminal from '@/components/terminal/Terminal';
+import { io, Socket } from 'socket.io-client';
 
 interface Phase {
   id: number;
@@ -86,6 +87,7 @@ export default function DuelMatchPage({ params }: { params: Promise<{ matchId: s
   const [commandLog, setCommandLog] = useState<string[]>([]);
   const [briefingOpen, setBriefingOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'terminal' | 'intel'>('terminal');
+  const socketRef = useRef<Socket | null>(null);
 
   // Fetch duel state
   const fetchDuel = useCallback(async () => {
@@ -94,18 +96,61 @@ export default function DuelMatchPage({ params }: { params: Promise<{ matchId: s
       if (!res.ok) return;
       const data = await res.json();
       setDuel(data);
-
-      // Determine myId from cookie by checking which player is "me"
-      // We do this by fetching /api/auth/me
     } catch {}
   }, [matchId]);
 
-  // Get current user
+  // Get current user + connect socket
   useEffect(() => {
     fetch('/api/auth/me').then(r => r.json()).then(d => {
       if (d.id) setMyId(d.id);
     });
-  }, []);
+
+    const SOCKET_URL = process.env.NEXT_PUBLIC_SOCKET_URL;
+    if (!SOCKET_URL) return;
+
+    // Get short-lived token for socket auth
+    fetch('/api/auth/socket-token').then(r => r.json()).then(({ token }) => {
+      if (!token) return;
+      const socket = io(SOCKET_URL, { auth: { token }, transports: ['websocket'] });
+      socketRef.current = socket;
+
+      socket.emit('duel:join', { matchId });
+
+      socket.on('duel:intel', (entry: IntelEntry) => {
+        setIntelFeed(prev => [entry, ...prev].slice(0, 50));
+      });
+
+      socket.on('duel:opponent_progress', () => {
+        fetchDuel();
+      });
+
+      socket.on('duel:sabotage_incoming', ({ type, duration }: { type: string; duration: number }) => {
+        setActiveSabotage({ type, active: true, expiresAt: Date.now() + duration });
+        if (type === 'NOISE_INJECTION') {
+          setTerminalLocked(true);
+          setLockCountdown(Math.ceil(duration / 1000));
+          const t = setInterval(() => {
+            setLockCountdown(c => {
+              if (c <= 1) { clearInterval(t); setTerminalLocked(false); return 0; }
+              return c - 1;
+            });
+          }, 1000);
+        }
+        if (type === 'INTEL_BLACKOUT') {
+          setIntelBlackout(true);
+          setTimeout(() => setIntelBlackout(false), duration);
+        }
+        if (type === 'HONEYPOT_TRIGGER') {
+          setHoneypotActive(true);
+        }
+      });
+
+      return () => {
+        socket.emit('duel:leave', { matchId });
+        socket.disconnect();
+      };
+    });
+  }, [matchId, fetchDuel]);
 
   useEffect(() => {
     fetchDuel();
