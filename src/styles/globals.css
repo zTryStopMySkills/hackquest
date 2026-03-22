@@ -257,4 +257,52 @@
   .rank-glow-red-team { box-shadow: 0 0 8px rgba(255, 87, 34, 0.6); }
   .rank-glow-elite { box-shadow: 0 0 8px rgba(156, 39, 176, 0.6); }
   .rank-glow-legend { box-shadow: 0 0 12px rgba(255, 215, 0, 0.8), 0 0 24px rgba(255, 215, 0, 0.3); }
+
+  /* ── Carbon Ads dark theme ──────────────────────────────────────────────── */
+  .carbon-ad-wrapper #carbonads {
+    display: block;
+    font-family: var(--font-family-mono);
+  }
+  .carbon-ad-wrapper #carbonads a { text-decoration: none; }
+  .carbon-ad-wrapper #carbonads .carbon-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 10px;
+  }
+  .carbon-ad-wrapper #carbonads .carbon-img img {
+    width: 100%;
+    max-width: 130px;
+    border: 1px solid rgba(0, 255, 65, 0.1);
+    border-radius: 2px;
+    display: block;
+  }
+  .carbon-ad-wrapper #carbonads .carbon-text {
+    font-size: 0.7rem;
+    line-height: 1.4;
+    color: rgba(0, 255, 65, 0.6);
+  }
+  .carbon-ad-wrapper #carbonads .carbon-poweredby {
+    font-size: 0.6rem;
+    color: rgba(0, 255, 65, 0.25);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+
+  /* ── EthicalAds dark theme ──────────────────────────────────────────────── */
+  .ea-placement { font-family: var(--font-family-mono) !important; }
+  .ea-placement .ea-callout {
+    background: rgba(13, 17, 23, 0.95) !important;
+    border: 1px solid rgba(0, 255, 65, 0.12) !important;
+    border-radius: 2px !important;
+  }
+  .ea-placement .ea-callout-text {
+    color: rgba(0, 255, 65, 0.65) !important;
+    font-size: 0.7rem !important;
+    line-height: 1.4 !important;
+  }
+  .ea-placement .ea-callout-pixel {
+    color: rgba(0, 255, 65, 0.25) !important;
+    font-size: 0.6rem !important;
+  }
 }

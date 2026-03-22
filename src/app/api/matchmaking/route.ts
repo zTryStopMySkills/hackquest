@@ -30,6 +30,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: true, cancelled: true });
   }
 
+  if (mode === 'DUEL') {
+    return NextResponse.json(
+      { error: 'Para el modo Duelo usa /api/duel/create' },
+      { status: 400 }
+    );
+  }
+
   if (!mode || !['RACE', 'TURNS', 'RED_VS_BLUE'].includes(mode)) {
     return NextResponse.json({ error: 'Modo de juego inválido' }, { status: 400 });
   }

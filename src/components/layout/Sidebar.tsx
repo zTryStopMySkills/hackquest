@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import RankBadge from "@/components/ui/RankBadge";
 import EloBadge from "@/components/ui/EloBadge";
+import AdSlot from "@/components/ads/AdSlot";
 import type { Rank, EloState } from "@/types/game";
 
 interface NavItem {
@@ -16,11 +17,14 @@ interface NavItem {
 const navItems: NavItem[] = [
   { icon: "[>]", label: "Dashboard", href: "/play" },
   { icon: "[◎]", label: "Jugar", href: "/matchmaking" },
+  { icon: "[⚔]", label: "Duelo 1v1", href: "/duel", badge: "NEW" },
   { icon: "[◈]", label: "Campaña", href: "/campaign" },
   { icon: "[▤]", label: "Pokédex", href: "/pokedex" },
   { icon: "[↟]", label: "Rankings", href: "/leaderboard" },
   { icon: "[◉]", label: "Perfil", href: "/profile" },
   { icon: "[#]", label: "Comunidad", href: "/community", badge: "NUEVO" },
+  { icon: "[✉]", label: "Mensajes", href: "/messages" },
+  { icon: "[!]", label: "Reportar", href: "/report" },
 ];
 
 interface SidebarProps {
@@ -28,13 +32,17 @@ interface SidebarProps {
   rank?: Rank;
   elo?: number;
   eloState?: EloState;
+  isAdmin?: boolean;
+  isPremium?: boolean;
 }
 
 export default function Sidebar({
-  username = "Agente_47",
-  rank = "PENTESTER",
-  elo = 1547,
+  username = "Agente",
+  rank = "SCRIPT_KIDDIE",
+  elo = 1000,
   eloState = "STABLE",
+  isAdmin = false,
+  isPremium = false,
 }: SidebarProps) {
   const pathname = usePathname();
 
@@ -85,7 +93,7 @@ export default function Sidebar({
             className="w-10 h-10 rounded-sm bg-military-accent border border-matrix-green/30 flex items-center justify-center text-matrix-green font-bold font-mono text-sm shrink-0"
             style={{ boxShadow: "0 0 8px rgba(0,255,65,0.2)" }}
           >
-            {username.slice(0, 2).toUpperCase()}
+            {[...username].slice(0, 2).join("").toUpperCase()}
           </div>
           <div className="min-w-0">
             <p
@@ -152,6 +160,11 @@ export default function Sidebar({
         })}
       </nav>
 
+      {/* Ad slot — hidden for premium users */}
+      <div className="px-3 pb-3">
+        <AdSlot isPremium={isPremium} variant="sidebar" />
+      </div>
+
       {/* Bottom section */}
       <div className="px-4 py-4 border-t border-military-border mt-auto">
         <div className="text-[10px] font-mono text-matrix-green/30 space-y-1">
@@ -179,6 +192,15 @@ export default function Sidebar({
           HackQuest — Todos los derechos reservados
         </p>
 
+        {isAdmin && (
+          <Link
+            href="/admin"
+            className="mt-3 flex items-center gap-2 text-neon-amber/70 hover:text-neon-amber text-xs font-mono uppercase tracking-wider transition-colors duration-150"
+          >
+            <span>[★]</span>
+            <span>Panel Admin</span>
+          </Link>
+        )}
         <Link
           href="/api/auth/logout"
           className="mt-3 flex items-center gap-2 text-neon-red/60 hover:text-neon-red text-xs font-mono uppercase tracking-wider transition-colors duration-150"

@@ -1,11 +1,11 @@
-// Prisma 7 configuration file.
-// Connection URL is read from the DATABASE_URL environment variable.
-// Set this variable in .env (local) or in your deployment secrets.
-//
-// Example DATABASE_URL:
-//   postgresql://user:password@localhost:5432/hackquest?schema=public
-
+// Prisma 7 config — URL used by CLI tools (db push, studio, generate, etc.)
+// In local dev, DATABASE_URL comes from .env. In Vercel, it's injected automatically.
 import { defineConfig } from "prisma/config";
+
+// Load .env only in local dev (dotenv is a no-op when vars are already set)
+if (process.env.NODE_ENV !== "production") {
+  try { require("dotenv").config(); } catch { /* dotenv not installed, skip */ }
+}
 
 export default defineConfig({
   datasource: {

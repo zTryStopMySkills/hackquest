@@ -2,7 +2,8 @@
 // Prisma Schema — PostgreSQL
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
@@ -60,6 +61,7 @@ enum Branch {
   CRYPTOGRAPHY
   FORENSICS
   SYSTEMS
+  CAMPAIGN
 }
 
 enum Difficulty {
@@ -74,12 +76,30 @@ enum Difficulty {
 enum ChallengeType {
   PUZZLE
   SANDBOX
+  CAMPAIGN
+  MULTIPLAYER
 }
 
 enum MatchMode {
   RACE
   TURNS
   RED_VS_BLUE
+  DUEL
+}
+
+enum DuelEventType {
+  PHASE_COMPLETE
+  SABOTAGE_USED
+  SABOTAGE_RECEIVED
+  FLAG_ATTEMPT
+  MATCH_END
+}
+
+enum SabotageType {
+  NOISE_INJECTION
+  HONEYPOT_TRIGGER
+  IDS_ALERT
+  INTEL_BLACKOUT
 }
 
 enum MatchStatus {
@@ -98,6 +118,28 @@ enum Severity {
   MEDIUM
   HIGH
   CRITICAL
+}
+
+enum NotificationType {
+  WARNING
+  REWARD
+  SYSTEM
+  ADMIN_MESSAGE
+}
+
+enum ReportType {
+  BUG
+  FEEDBACK
+  IMPROVEMENT
+  CONTENT_ERROR
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  IN_REVIEW
+  RESOLVED
+  DISMISSED
 }
 
 enum AchievementType {
@@ -136,6 +178,7 @@ model User {
   isPremium          Boolean             @default(false)
   campaignDifficulty CampaignDifficulty?
   campaignChapter    Int                 @default(0)
+  displayName        String?
   profileTitle       ProfileTitle        @default(NONE)
   bannerType         BannerType          @default(NONE)
   dailyBonusClaimed  DateTime?
@@ -145,15 +188,28 @@ model User {
   updatedAt          DateTime            @updatedAt
   lastActiveAt       DateTime            @default(now())
 
+  // Admin fields
+  isAdmin            Boolean             @default(false)
+  isBanned           Boolean             @default(false)
+  banReason          String?
+  isIsolated         Boolean             @default(false)
+  isolatedUntil      DateTime?
+
   // Relations
-  skillBranches      SkillBranch[]
-  challengeAttempts  ChallengeAttempt[]
-  matchPlayers       MatchPlayer[]
-  campaignProgress   CampaignProgress[]
-  pokedexEntries     PokedexEntry[]
-  achievements       Achievement[]
-  eloHistory         EloHistory[]
-  communityMessages  CommunityMessage[]
+  skillBranches            SkillBranch[]
+  challengeAttempts        ChallengeAttempt[]
+  matchPlayers             MatchPlayer[]
+  campaignProgress         CampaignProgress[]
+  pokedexEntries           PokedexEntry[]
+  achievements             Achievement[]
+  eloHistory               EloHistory[]
+  communityMessages        CommunityMessage[]
+  notifications            UserNotification[]
+  sentPrivateMessages      PrivateMessage[]    @relation("Sender")
+  receivedPrivateMessages  PrivateMessage[]    @relation("Recipient")
+  adminActionsPerformed    AdminActionLog[]    @relation("AdminActor")
+  adminActionsReceived     AdminActionLog[]    @relation("TargetUser")
+  reports                  Report[]
 
   @@index([rank])
   @@index([elo])
@@ -241,8 +297,9 @@ model Match {
   createdAt   DateTime    @default(now())
   finishedAt  DateTime?
 
-  challenge Challenge     @relation(fields: [challengeId], references: [id], onDelete: Cascade)
-  players   MatchPlayer[]
+  challenge  Challenge     @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  players    MatchPlayer[]
+  duelMatch  DuelMatch?
 
   @@index([status])
   @@index([mode])
@@ -368,4 +425,125 @@ model CommunityMessage {
 
   @@index([createdAt])
   @@index([userId])
+}
+
+model PrivateMessage {
+  id          String   @id @default(cuid())
+  senderId    String
+  recipientId String
+  content     String   @db.VarChar(1000)
+  read        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  sender    User @relation("Sender",    fields: [senderId],    references: [id], onDelete: Cascade)
+  recipient User @relation("Recipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@index([senderId])
+  @@index([recipientId])
+  @@index([createdAt])
+  @@index([senderId, recipientId])
+}
+
+model UserNotification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String           @db.VarChar(1000)
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, read])
+  @@index([createdAt])
+}
+
+model Report {
+  id          String       @id @default(cuid())
+  userId      String
+  type        ReportType
+  title       String       @db.VarChar(120)
+  description String       @db.VarChar(2000)
+  status      ReportStatus @default(OPEN)
+  adminNote   String?      @db.VarChar(500)
+  resolvedAt  DateTime?
+  createdAt   DateTime     @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([type])
+  @@index([createdAt])
+}
+
+model DuelScenario {
+  id           String   @id @default(cuid())
+  slug         String   @unique
+  title        String
+  description  String
+  targetType   String   // "web" | "ip" | "base"
+  phases       Json
+  flag         String
+  briefing     String
+  hints        Json
+  requiredRank Rank
+
+  @@index([requiredRank])
+  @@index([targetType])
+}
+
+model DuelMatch {
+  id          String    @id @default(cuid())
+  matchId     String    @unique
+  attackerAId String
+  attackerBId String
+  targetAId   String
+  targetBId   String
+  winnerId    String?
+  eloChangeA  Int       @default(0)
+  eloChangeB  Int       @default(0)
+  sabotagesA  Int       @default(2)
+  sabotagesB  Int       @default(2)
+  finishedAt  DateTime?
+
+  match  Match       @relation(fields: [matchId],  references: [id], onDelete: Cascade)
+  events DuelEvent[]
+
+  @@index([matchId])
+  @@index([attackerAId])
+  @@index([attackerBId])
+}
+
+model DuelEvent {
+  id          String        @id @default(cuid())
+  duelMatchId String
+  actorId     String
+  type        DuelEventType
+  payload     Json
+  createdAt   DateTime      @default(now())
+
+  duelMatch DuelMatch @relation(fields: [duelMatchId], references: [id], onDelete: Cascade)
+
+  @@index([duelMatchId])
+  @@index([actorId])
+}
+
+model AdminActionLog {
+  id        String   @id @default(cuid())
+  adminId   String
+  targetId  String
+  action    String
+  reason    String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  admin  User @relation("AdminActor", fields: [adminId],  references: [id], onDelete: Cascade)
+  target User @relation("TargetUser", fields: [targetId], references: [id], onDelete: Cascade)
+
+  @@index([adminId])
+  @@index([targetId])
+  @@index([createdAt])
 }

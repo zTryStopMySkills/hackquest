@@ -173,6 +173,7 @@ export async function POST(req: NextRequest) {
         hintsUsed,
         perfectSolve: isPerfect,
         timeSpentSeconds: timeSpent,
+        completedAt: isCorrect ? new Date() : undefined,
         commandLog: commandLog || [],
         reportContent,
       },
@@ -186,6 +187,46 @@ export async function POST(req: NextRequest) {
         reason: isCorrect ? `Resolvió ${challenge.title}` : `Falló ${challenge.title}`,
       },
     });
+
+    // ── Achievement checks (only on correct solves) ────────────────────────
+    const newAchievements: string[] = [];
+    if (isCorrect) {
+      const grantAchievement = async (type: string) => {
+        try {
+          await prisma.achievement.create({ data: { userId: user.id, type: type as any } });
+          newAchievements.push(type);
+          await prisma.userNotification.create({
+            data: {
+              userId: user.id,
+              type: 'REWARD',
+              title: '¡Logro desbloqueado!',
+              message: `Has conseguido el logro: ${type.replace(/_/g, ' ')}`,
+            },
+          });
+        } catch { /* already unlocked */ }
+      };
+
+      const [solvedCount, totalAttempts] = await Promise.all([
+        prisma.challengeAttempt.count({ where: { userId: user.id, solved: true } }),
+        prisma.challengeAttempt.count({ where: { userId: user.id } }),
+      ]);
+
+      // FIRST_BLOOD: primer reto resuelto
+      if (solvedCount === 1) await grantAchievement('FIRST_BLOOD');
+      // RANK_UP: subida de rango
+      if (newRank !== rank) await grantAchievement('RANK_UP');
+      // LEGEND_RANK: rango LEGEND
+      if (newRank === 'LEGEND') await grantAchievement('LEGEND_RANK');
+      // PERFECT_SOLVE: solve perfecto
+      if (isPerfect) await grantAchievement('PERFECT_SOLVE');
+      // WIN_STREAK: 5 victorias seguidas
+      if (updatedUser.winStreak >= 5) await grantAchievement('WIN_STREAK');
+      // SPEED_DEMON: tiempo relámpago
+      if (timeBonusResult.name === 'LIGHTNING') await grantAchievement('SPEED_DEMON');
+      // NO_HINTS: 5 solves perfectos (sin pistas)
+      const noHintSolves = await prisma.challengeAttempt.count({ where: { userId: user.id, solved: true, hintsUsed: 0 } });
+      if (noHintSolves >= 5) await grantAchievement('NO_HINTS');
+    }
 
     if (isCorrect) {
       const technique = await prisma.technique.findFirst({
@@ -229,6 +270,7 @@ export async function POST(req: NextRequest) {
       timeBonus: timeBonusResult,
       streakBonus: isCorrect && user.winStreak + 1 >= STREAK_THRESHOLD,
       debriefing: isCorrect ? challenge.debriefing : null,
+      newAchievements,
     });
   } catch (error) {
     console.error('Submit flag error:', error);

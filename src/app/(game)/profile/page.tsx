@@ -1,157 +1,91 @@
-import GameLayout from "@/components/layout/GameLayout";
+'use client';
+
+import { useState, useEffect } from "react";
 import Panel from "@/components/ui/Panel";
 import RankBadge from "@/components/ui/RankBadge";
 import EloBadge from "@/components/ui/EloBadge";
 import ProgressBar from "@/components/ui/ProgressBar";
 
-const PROFILE_DATA = {
-  username: "Agente_47",
-  title: "THE PENTESTER",
-  rank: "PENTESTER" as const,
-  elo: 1547,
-  eloState: "STABLE" as const,
-  points: 12480,
-  streak: 3,
-  joinDate: "Enero 2025",
-  totalMatches: 147,
-  wins: 85,
-  losses: 62,
-  perfectSolves: 23,
-  campaignChapter: 3,
-  campaignMode: "NORMAL",
-  pokedexCount: 47,
-  pokedexTotal: 120,
+// Data is now fetched from /api/auth/me + /api/game/stats
+
+// SKILL_BRANCHES is computed from user.skillBranches in the component
+
+const ACHIEVEMENTS_META = [
+  { id: "FIRST_BLOOD",       icon: "[!]", name: "Primera Sangre",    desc: "Resolver tu primer reto",               color: "#00FF41" },
+  { id: "WIN_STREAK",        icon: "[^]", name: "En Racha",           desc: "5 victorias consecutivas",             color: "#FFB800" },
+  { id: "PERFECT_SOLVE",     icon: "[*]", name: "Perfección",         desc: "Resolver sin pistas ni errores",        color: "#00FFFF" },
+  { id: "BRANCH_MASTERY",    icon: "[W]", name: "Maestría",           desc: "Dominar una rama de especialización",   color: "#00FF41" },
+  { id: "LEGEND_RANK",       icon: "[L]", name: "Leyenda",            desc: "Alcanzar rango LEGEND",                 color: "#FFD700" },
+  { id: "POKEDEX_COMPLETE",  icon: "[P]", name: "Coleccionista",      desc: "Completar el Pokédex de técnicas",      color: "#9C27B0" },
+  { id: "RANK_UP",           icon: "[R]", name: "Ascenso",            desc: "Subir de rango",                        color: "#00FFFF" },
+  { id: "SPEED_DEMON",       icon: "[S]", name: "Speed Demon",        desc: "Resolver un reto en tiempo relámpago",  color: "#FF5722" },
+  { id: "NO_HINTS",          icon: "[N]", name: "Sin Ayudas",         desc: "Resolver 5 retos sin usar pistas",      color: "#FFB800" },
+  { id: "DAILY_STREAK",      icon: "[D]", name: "Constante",          desc: "7 días seguidos de actividad",          color: "#2196F3" },
+];
+
+// PROFILE_TITLES computed dynamically inside component
+
+const BRANCH_META: Record<string, { name: string; color: string; glow: string }> = {
+  WEB_HACKING:  { name: "Web Hacking",  color: "#00FF41", glow: "rgba(0,255,65,0.5)" },
+  NETWORKS:     { name: "Redes",        color: "#00FFFF", glow: "rgba(0,255,255,0.5)" },
+  CRYPTOGRAPHY: { name: "Criptografía", color: "#FFB800", glow: "rgba(255,184,0,0.5)" },
+  FORENSICS:    { name: "Forense",      color: "#9C27B0", glow: "rgba(156,39,176,0.5)" },
+  SYSTEMS:      { name: "Sistemas",     color: "#FF5722", glow: "rgba(255,87,34,0.5)" },
 };
 
-const SKILL_BRANCHES = [
-  {
-    name: "Web Hacking",
-    key: "web",
-    level: 7,
-    maxLevel: 10,
-    xp: 2840,
-    xpMax: 3500,
-    color: "#00FF41",
-    glow: "rgba(0,255,65,0.5)",
-    techniques: 18,
-  },
-  {
-    name: "Redes",
-    key: "net",
-    level: 5,
-    maxLevel: 10,
-    xp: 1200,
-    xpMax: 2000,
-    color: "#00FFFF",
-    glow: "rgba(0,255,255,0.5)",
-    techniques: 12,
-  },
-  {
-    name: "Criptografía",
-    key: "crypto",
-    level: 4,
-    maxLevel: 10,
-    xp: 880,
-    xpMax: 1500,
-    color: "#FFB800",
-    glow: "rgba(255,184,0,0.5)",
-    techniques: 9,
-  },
-  {
-    name: "Forense",
-    key: "forensics",
-    level: 3,
-    maxLevel: 10,
-    xp: 540,
-    xpMax: 1200,
-    color: "#9C27B0",
-    glow: "rgba(156,39,176,0.5)",
-    techniques: 5,
-  },
-  {
-    name: "Sistemas",
-    key: "systems",
-    level: 6,
-    maxLevel: 10,
-    xp: 1680,
-    xpMax: 2500,
-    color: "#FF5722",
-    glow: "rgba(255,87,34,0.5)",
-    techniques: 13,
-  },
-];
-
-const ACHIEVEMENTS = [
-  {
-    id: "first_blood",
-    icon: "[!]",
-    name: "Primera Sangre",
-    desc: "Ganar la primera partida",
-    unlocked: true,
-    color: "#00FF41",
-  },
-  {
-    id: "streak_5",
-    icon: "[^]",
-    name: "En Racha",
-    desc: "5 victorias consecutivas",
-    unlocked: true,
-    color: "#FFB800",
-  },
-  {
-    id: "perfect",
-    icon: "[*]",
-    name: "Perfección",
-    desc: "Resolver sin pistas ni errores",
-    unlocked: true,
-    color: "#00FFFF",
-  },
-  {
-    id: "web_master",
-    icon: "[W]",
-    name: "Web Master",
-    desc: "Nivel 7 en Web Hacking",
-    unlocked: true,
-    color: "#00FF41",
-  },
-  {
-    id: "legend",
-    icon: "[L]",
-    name: "Leyenda",
-    desc: "Alcanzar rango LEGEND",
-    unlocked: false,
-    color: "#FFD700",
-  },
-  {
-    id: "pokedex_half",
-    icon: "[P]",
-    name: "Coleccionista",
-    desc: "Descubrir 60 técnicas",
-    unlocked: false,
-    color: "#9C27B0",
-  },
-];
-
-const PROFILE_TITLES = [
-  { id: "SECURITY", label: "SECURITY", unlocked: true, color: "#00FF41" },
-  { id: "HACKER", label: "HACKER", unlocked: true, color: "#00FFFF" },
-  { id: "THE_PENTESTER", label: "THE PENTESTER", unlocked: true, color: "#2196F3", active: true },
-  { id: "GHOST", label: "GHOST", unlocked: false, color: "#888" },
-  { id: "THE_ONE", label: "THE ONE", unlocked: false, color: "#FFD700" },
-];
-
 export default function ProfilePage() {
-  const winRate = Math.round((PROFILE_DATA.wins / PROFILE_DATA.totalMatches) * 100);
+  const [user, setUser] = useState<any>(null);
+  const [stats, setStats] = useState({ totalMatches: 0, wins: 0, losses: 0, perfectSolves: 0, winRate: 0 });
+  const [savingTitle, setSavingTitle] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/auth/me').then(r => r.ok ? r.json() : null).then(d => { if (d) setUser(d); });
+    fetch('/api/game/stats').then(r => r.ok ? r.json() : null).then(d => { if (d) setStats(d); });
+  }, []);
+
+  async function handleTitleSelect(titleId: string, unlocked: boolean) {
+    if (!unlocked || savingTitle) return;
+    setSavingTitle(true);
+    const res = await fetch('/api/auth/me', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ profileTitle: titleId }),
+    });
+    if (res.ok) setUser((prev: any) => ({ ...prev, profileTitle: titleId }));
+    setSavingTitle(false);
+  }
+
+  if (!user) {
+    return (
+      <div className="p-6 flex items-center justify-center">
+        <p className="text-matrix-green/40 text-xs font-mono animate-pulse">
+          &gt; CARGANDO DOSSIER...
+        </p>
+      </div>
+    );
+  }
+
+  const winRate = stats.totalMatches ? Math.round(stats.winRate * 100) : 0;
+  const skillBranches = (user.skillBranches ?? [])
+    .filter((b: any) => b.branch !== 'CAMPAIGN')
+    .map((b: any) => {
+      const meta = BRANCH_META[b.branch] ?? { name: b.branch, color: "#00FF41", glow: "rgba(0,255,65,0.5)" };
+      const xpMax = (b.level + 1) * 500;
+      return { key: b.branch, name: meta.name, level: b.level, maxLevel: 99, xp: b.xp, xpMax, color: meta.color, glow: meta.glow, techniques: b.unlockedChallenges?.length ?? 0 };
+    });
+
+  const SKILL_BRANCHES = skillBranches;
+  const unlockedAchievementTypes = new Set((user.achievements ?? []).map((a: any) => a.type));
+  const ACHIEVEMENTS = ACHIEVEMENTS_META.map(a => ({ ...a, unlocked: unlockedAchievementTypes.has(a.id) }));
+
+  const PROFILE_TITLES = [
+    { id: "SECURITY",     label: "SECURITY",       unlocked: user.rank !== 'SCRIPT_KIDDIE', color: "#00FF41", active: user.profileTitle === 'SECURITY' },
+    { id: "HACKER",       label: "HACKER",          unlocked: ['RED_TEAM','ELITE_HACKER','LEGEND'].includes(user.rank), color: "#00FFFF", active: user.profileTitle === 'HACKER' },
+    { id: "THE_ONE",      label: "THE ONE",          unlocked: user.rank === 'LEGEND', color: "#FFD700", active: user.profileTitle === 'THE_ONE' },
+    { id: "NONE",         label: "SIN TÍTULO",       unlocked: true, color: "#888", active: user.profileTitle === 'NONE' },
+  ];
 
   return (
-    <GameLayout
-      username={PROFILE_DATA.username}
-      rank={PROFILE_DATA.rank}
-      elo={PROFILE_DATA.elo}
-      eloState={PROFILE_DATA.eloState}
-      points={PROFILE_DATA.points}
-      streak={PROFILE_DATA.streak}
-    >
       <div className="p-6 space-y-6">
         {/* Page header */}
         <div className="flex items-center gap-2 mb-2">
@@ -198,10 +132,10 @@ export default function ProfilePage() {
                       background: "rgba(33,150,243,0.05)",
                     }}
                   >
-                    {PROFILE_DATA.username.slice(0, 2).toUpperCase()}
+                    {[...(user.displayName ?? user.username)].slice(0, 2).join("").toUpperCase()}
                   </div>
                   <div className="pb-1">
-                    <RankBadge rank={PROFILE_DATA.rank} size="sm" />
+                    <RankBadge rank={user.rank} size="sm" />
                   </div>
                 </div>
 
@@ -209,30 +143,32 @@ export default function ProfilePage() {
                   className="font-mono font-bold text-xl text-matrix-green mb-0.5"
                   style={{ textShadow: "0 0 6px rgba(0,255,65,0.5)" }}
                 >
-                  {PROFILE_DATA.username}
+                  {user.displayName ?? user.username}
                 </h2>
 
                 {/* Active title */}
-                <p
-                  className="font-mono font-bold text-sm tracking-widest uppercase mb-3"
-                  style={{
-                    color: "#2196F3",
-                    textShadow: "0 0 8px rgba(33,150,243,0.6)",
-                  }}
-                >
-                  // {PROFILE_DATA.title} //
-                </p>
+                {user.profileTitle && user.profileTitle !== 'NONE' && (
+                  <p
+                    className="font-mono font-bold text-sm tracking-widest uppercase mb-3"
+                    style={{
+                      color: PROFILE_TITLES.find(t => t.id === user.profileTitle)?.color ?? '#2196F3',
+                      textShadow: "0 0 8px rgba(33,150,243,0.6)",
+                    }}
+                  >
+                    // {PROFILE_TITLES.find(t => t.id === user.profileTitle)?.label ?? user.profileTitle} //
+                  </p>
+                )}
 
                 <EloBadge
-                  elo={PROFILE_DATA.elo}
-                  state={PROFILE_DATA.eloState}
+                  elo={user.elo}
+                  state={user.eloState}
                   showProgress
                 />
 
                 <div className="mt-4 pt-4 border-t border-military-border/50 space-y-2 text-xs font-mono">
                   <div className="flex justify-between">
                     <span className="text-matrix-green/40">Agente desde</span>
-                    <span className="text-matrix-green/70">{PROFILE_DATA.joinDate}</span>
+                    <span className="text-matrix-green/70">{new Date(user.createdAt).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-matrix-green/40">Puntos totales</span>
@@ -240,7 +176,7 @@ export default function ProfilePage() {
                       className="text-neon-amber font-bold"
                       style={{ textShadow: "0 0 4px rgba(255,184,0,0.4)" }}
                     >
-                      {PROFILE_DATA.points.toLocaleString()}
+                      {user.points.toLocaleString()}
                     </span>
                   </div>
                 </div>
@@ -251,10 +187,10 @@ export default function ProfilePage() {
             <Panel title="ESTADISTICAS DE COMBATE" classification="SECRET">
               <div className="space-y-3 text-sm font-mono">
                 {[
-                  { label: "Partidas jugadas", value: PROFILE_DATA.totalMatches, color: "#00FF41" },
-                  { label: "Victorias", value: PROFILE_DATA.wins, color: "#00FF41" },
-                  { label: "Derrotas", value: PROFILE_DATA.losses, color: "#FF0040" },
-                  { label: "Soluciones perfectas", value: PROFILE_DATA.perfectSolves, color: "#00FFFF" },
+                  { label: "Partidas jugadas", value: stats.totalMatches, color: "#00FF41" },
+                  { label: "Victorias", value: stats.wins, color: "#00FF41" },
+                  { label: "Derrotas", value: stats.losses, color: "#FF0040" },
+                  { label: "Soluciones perfectas", value: stats.perfectSolves, color: "#00FFFF" },
                 ].map((stat) => (
                   <div key={stat.label} className="flex items-center justify-between py-1 border-b border-military-border/30">
                     <span className="text-matrix-green/50">{stat.label}</span>
@@ -271,8 +207,8 @@ export default function ProfilePage() {
                 ))}
                 <div className="pt-2">
                   <ProgressBar
-                    value={PROFILE_DATA.wins}
-                    max={PROFILE_DATA.totalMatches}
+                    value={stats.wins}
+                    max={stats.totalMatches}
                     label="Tasa de victoria"
                     showPercent
                     color="#00FF41"
@@ -286,14 +222,16 @@ export default function ProfilePage() {
             <Panel title="TITULOS DESBLOQUEADOS">
               <div className="space-y-1.5">
                 {PROFILE_TITLES.map((title) => (
-                  <div
+                  <button
                     key={title.id}
-                    className={`flex items-center justify-between px-3 py-2 border rounded-sm text-xs font-mono transition-all ${
+                    onClick={() => handleTitleSelect(title.id, title.unlocked)}
+                    disabled={!title.unlocked || savingTitle}
+                    className={`w-full flex items-center justify-between px-3 py-2 border rounded-sm text-xs font-mono transition-all ${
                       title.active
                         ? "border-rank-pentester bg-rank-pentester/10"
                         : title.unlocked
-                        ? "border-military-border hover:border-matrix-green/30"
-                        : "border-military-border/30 opacity-40"
+                        ? "border-military-border hover:border-matrix-green/30 cursor-pointer"
+                        : "border-military-border/30 opacity-40 cursor-not-allowed"
                     }`}
                     style={
                       title.active
@@ -309,10 +247,13 @@ export default function ProfilePage() {
                         ACTIVO
                       </span>
                     )}
+                    {!title.active && title.unlocked && (
+                      <span className="text-[10px] text-matrix-green/30">[EQUIPAR]</span>
+                    )}
                     {!title.unlocked && (
                       <span className="text-[10px] text-[#444]">[L]</span>
                     )}
-                  </div>
+                  </button>
                 ))}
               </div>
             </Panel>
@@ -379,7 +320,7 @@ export default function ProfilePage() {
                     className="text-2xl font-bold font-mono text-neon-amber"
                     style={{ textShadow: "0 0 8px rgba(255,184,0,0.6)" }}
                   >
-                    {PROFILE_DATA.campaignChapter}
+                    {user.campaignChapter}
                   </span>
                   <span className="text-neon-amber/50 text-[9px] font-mono uppercase">
                     cap
@@ -391,10 +332,10 @@ export default function ProfilePage() {
                       className="font-mono font-bold text-neon-amber"
                       style={{ textShadow: "0 0 6px rgba(255,184,0,0.4)" }}
                     >
-                      Capitulo {PROFILE_DATA.campaignChapter}: La Infiltración
+                      Capitulo {user.campaignChapter}: La Infiltración
                     </p>
                     <p className="text-matrix-green/40 text-xs font-mono">
-                      Modo: {PROFILE_DATA.campaignMode} — En progreso
+                      Modo: {user.campaignDifficulty ?? '—'} — En progreso
                     </p>
                   </div>
                   <ProgressBar
@@ -421,19 +362,19 @@ export default function ProfilePage() {
                       className="font-mono font-bold text-xl text-matrix-green"
                       style={{ textShadow: "0 0 8px rgba(0,255,65,0.6)" }}
                     >
-                      {PROFILE_DATA.pokedexCount}
-                      <span className="text-matrix-green/40 text-sm">/{PROFILE_DATA.pokedexTotal}</span>
+                      {user.pokedexCount}
+                      <span className="text-matrix-green/40 text-sm">/{120}</span>
                     </p>
                   </div>
                   <ProgressBar
-                    value={PROFILE_DATA.pokedexCount}
-                    max={PROFILE_DATA.pokedexTotal}
+                    value={user.pokedexCount}
+                    max={120}
                     showPercent
                     color="#00FF41"
                     height="md"
                   />
                   <p className="text-matrix-green/30 text-xs font-mono">
-                    {PROFILE_DATA.pokedexTotal - PROFILE_DATA.pokedexCount} técnicas aun por descubrir. Sigue jugando para completar tu arsenal.
+                    {120 - user.pokedexCount} técnicas aun por descubrir. Sigue jugando para completar tu arsenal.
                   </p>
                 </div>
               </div>
@@ -488,6 +429,5 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
-    </GameLayout>
   );
 }

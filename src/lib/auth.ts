@@ -13,19 +13,19 @@ export async function verifyPassword(password: string, hash: string): Promise<bo
   return bcrypt.compare(password, hash);
 }
 
-export function generateToken(payload: { userId: string; username: string }): string {
+export function generateToken(payload: { userId: string; username: string; isAdmin?: boolean }): string {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: TOKEN_EXPIRY });
 }
 
-export function verifyToken(token: string): { userId: string; username: string } | null {
+export function verifyToken(token: string): { userId: string; username: string; isAdmin?: boolean } | null {
   try {
-    return jwt.verify(token, JWT_SECRET) as { userId: string; username: string };
+    return jwt.verify(token, JWT_SECRET) as { userId: string; username: string; isAdmin?: boolean };
   } catch {
     return null;
   }
 }
 
-export async function getSession(): Promise<{ userId: string; username: string } | null> {
+export async function getSession(): Promise<{ userId: string; username: string; isAdmin?: boolean } | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get('hackquest-token')?.value;
   if (!token) return null;

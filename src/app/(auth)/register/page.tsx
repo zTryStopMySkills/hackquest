@@ -8,6 +8,7 @@ import Button from "@/components/ui/Button";
 
 export default function RegisterPage() {
   const [agentName, setAgentName] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -22,9 +23,13 @@ export default function RegisterPage() {
     const newErrors: Record<string, string> = {};
 
     if (!agentName || agentName.length < 3) {
-      newErrors.agentName = "El nombre de agente debe tener al menos 3 caracteres.";
+      newErrors.agentName = "El usuario debe tener al menos 3 caracteres.";
     } else if (!/^[a-zA-Z0-9_\-]+$/.test(agentName)) {
-      newErrors.agentName = "Solo letras, números, guiones y guiones bajos.";
+      newErrors.agentName = "Solo letras, números, _ y - (es el usuario de login).";
+    }
+
+    if (displayName && displayName.length > 32) {
+      newErrors.displayName = "El nombre visible no puede superar 32 caracteres.";
     }
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -71,6 +76,7 @@ export default function RegisterPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           username: agentName,
+          displayName: displayName || undefined,
           email,
           password,
           recruitCode: recruitCode || undefined,
@@ -89,12 +95,10 @@ export default function RegisterPage() {
           window.location.href = "/login";
         }, 2000);
       } else {
-        const data = await res.json().catch(() => ({ message: "Error en el registro." }));
-        setTerminalOutput((p) => [
-          ...p,
-          `ERROR: ${data.message ?? "Registro fallido."}`,
-        ]);
-        setErrors({ general: data.message ?? "Error en el registro." });
+        const data = await res.json().catch(() => ({ error: "Error en el registro." }));
+        const msg = data.error ?? data.message ?? "Registro fallido.";
+        setTerminalOutput((p) => [...p, `ERROR: ${msg}`]);
+        setErrors({ general: msg });
       }
     } catch {
       setTerminalOutput((p) => [
@@ -161,13 +165,13 @@ export default function RegisterPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5" noValidate>
-              {/* Agent name */}
+              {/* Login username */}
               <div className="space-y-1.5">
                 <label
                   htmlFor="agentName"
                   className="block text-xs font-mono uppercase tracking-widest text-matrix-green/60"
                 >
-                  &gt; Nombre de Agente
+                  &gt; Usuario de Login
                 </label>
                 <input
                   id="agentName"
@@ -179,8 +183,38 @@ export default function RegisterPage() {
                   className="input-hack w-full"
                   disabled={isLoading}
                 />
+                <p className="text-matrix-green/25 text-[10px] font-mono">
+                  Solo letras, números, _ y - · Se usa para iniciar sesión
+                </p>
                 {errors.agentName && (
                   <p className="text-neon-red text-xs font-mono">[!] {errors.agentName}</p>
+                )}
+              </div>
+
+              {/* Display name */}
+              <div className="space-y-1.5">
+                <label
+                  htmlFor="displayName"
+                  className="block text-xs font-mono uppercase tracking-widest text-matrix-green/60"
+                >
+                  &gt; Nombre Visible{" "}
+                  <span className="text-matrix-green/30">(opcional)</span>
+                </label>
+                <input
+                  id="displayName"
+                  type="text"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="★ Tu nombre con símbolos, emojis..."
+                  autoComplete="off"
+                  className="input-hack w-full"
+                  disabled={isLoading}
+                />
+                <p className="text-matrix-green/25 text-[10px] font-mono">
+                  Acepta cualquier carácter Unicode · Se muestra en el perfil y rankings
+                </p>
+                {errors.displayName && (
+                  <p className="text-neon-red text-xs font-mono">[!] {errors.displayName}</p>
                 )}
               </div>
 

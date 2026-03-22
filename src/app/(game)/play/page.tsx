@@ -1,8 +1,18 @@
 'use client';
 
-import GameLayout from "@/components/layout/GameLayout";
+import { useState, useEffect } from "react";
 import Panel from "@/components/ui/Panel";
 import Link from "next/link";
+
+interface ActivityEntry {
+  type: 'win' | 'loss';
+  mode: string;
+  challenge: string;
+  points: string;
+  time: string;
+  solved: boolean;
+  perfect: boolean;
+}
 
 const GAME_MODES = [
   {
@@ -72,64 +82,25 @@ const GAME_MODES = [
   },
 ];
 
-const QUICK_STATS = [
-  { label: "Partidas Jugadas", value: "147", icon: "[=]" },
-  { label: "Tasa de Victoria", value: "58%", icon: "[^]" },
-  { label: "Racha Actual", value: "3", icon: "[!]" },
-  { label: "Mejor Racha", value: "11", icon: "[*]" },
-];
-
-const RECENT_ACTIVITY = [
-  {
-    type: "win",
-    mode: "CARRERA",
-    opponent: "shadow_exe",
-    points: "+320",
-    elo: "+18",
-    time: "hace 2h",
-    challenge: "SQL Injection Avanzado",
-  },
-  {
-    type: "win",
-    mode: "CARRERA",
-    opponent: "null_byte_99",
-    points: "+280",
-    elo: "+15",
-    time: "hace 4h",
-    challenge: "XSS Reflected",
-  },
-  {
-    type: "loss",
-    mode: "CARRERA",
-    opponent: "phantom_kernel",
-    points: "-120",
-    elo: "-12",
-    time: "hace 6h",
-    challenge: "Buffer Overflow Clásico",
-  },
-  {
-    type: "campaign",
-    mode: "CAMPAÑA",
-    opponent: "",
-    points: "+450",
-    elo: "+0",
-    time: "ayer",
-    challenge: "Cap. 3: La Brecha",
-  },
-  {
-    type: "win",
-    mode: "CARRERA",
-    opponent: "recon_ghost",
-    points: "+310",
-    elo: "+16",
-    time: "ayer",
-    challenge: "Path Traversal",
-  },
-];
+// QUICK_STATS and RECENT_ACTIVITY populated dynamically
 
 export default function PlayPage() {
+  const [stats, setStats] = useState({ totalMatches: 0, wins: 0, losses: 0, perfectSolves: 0, winRate: 0 });
+  const [recentActivity, setRecentActivity] = useState<ActivityEntry[]>([]);
+
+  useEffect(() => {
+    fetch('/api/game/stats').then(r => r.ok ? r.json() : null).then(d => { if (d) setStats(d); });
+    fetch('/api/game/activity').then(r => r.ok ? r.json() : null).then(d => { if (d) setRecentActivity(d.activity ?? []); });
+  }, []);
+
+  const QUICK_STATS = [
+    { label: "Partidas Jugadas", value: String(stats.totalMatches), icon: "[=]" },
+    { label: "Tasa de Victoria", value: stats.totalMatches ? `${Math.round(stats.winRate * 100)}%` : "—", icon: "[^]" },
+    { label: "Resueltos Perfecto", value: String(stats.perfectSolves), icon: "[!]" },
+    { label: "Victorias", value: String(stats.wins), icon: "[*]" },
+  ];
+
   return (
-    <GameLayout username="Agente_47" rank="PENTESTER" elo={1547} eloState="STABLE" points={12480} streak={3}>
       <div className="p-6 space-y-8">
         {/* Page header */}
         <div>
@@ -322,66 +293,51 @@ export default function PlayPage() {
 
         {/* Recent activity */}
         <Panel title="ACTIVIDAD RECIENTE" classification="UNCLASSIFIED">
-          <div className="space-y-2">
-            {RECENT_ACTIVITY.map((activity, i) => (
-              <div
-                key={i}
-                className="flex items-center justify-between py-2 px-3 border border-military-border/40 hover:border-military-border transition-colors font-mono text-sm"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <span
-                    className="text-xs font-bold shrink-0"
-                    style={{
-                      color:
-                        activity.type === "win"
-                          ? "#00FF41"
-                          : activity.type === "loss"
-                          ? "#FF0040"
-                          : "#FFB800",
-                      textShadow: `0 0 4px currentColor`,
-                    }}
-                  >
-                    {activity.type === "win"
-                      ? "[W]"
-                      : activity.type === "loss"
-                      ? "[L]"
-                      : "[C]"}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-matrix-green/80 text-xs truncate">
-                      {activity.challenge}
-                    </p>
-                    <p className="text-matrix-green/30 text-[10px]">
-                      {activity.mode}
-                      {activity.opponent && ` vs ${activity.opponent}`}
-                    </p>
+          {recentActivity.length === 0 ? (
+            <p className="text-matrix-green/20 text-xs font-mono text-center py-6">
+              Sin actividad reciente — juega tu primer reto
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {recentActivity.map((activity, i) => (
+                <div
+                  key={i}
+                  className="flex items-center justify-between py-2 px-3 border border-military-border/40 hover:border-military-border transition-colors font-mono text-sm"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span
+                      className="text-xs font-bold shrink-0"
+                      style={{
+                        color: activity.type === "win" ? "#00FF41" : "#FF0040",
+                        textShadow: `0 0 4px currentColor`,
+                      }}
+                    >
+                      {activity.type === "win" ? "[W]" : "[L]"}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="text-matrix-green/80 text-xs truncate flex items-center gap-1">
+                        {activity.challenge}
+                        {activity.perfect && (
+                          <span className="text-[9px] text-neon-cyan border border-neon-cyan/30 px-1 py-0.5 ml-1">PERFECT</span>
+                        )}
+                      </p>
+                      <p className="text-matrix-green/30 text-[10px]">{activity.mode}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4 shrink-0 text-xs">
+                    <span
+                      className="font-bold"
+                      style={{ color: activity.points.startsWith("+") ? "#00FF41" : "#FF0040" }}
+                    >
+                      {activity.points} pts
+                    </span>
+                    <span className="text-matrix-green/30">{activity.time}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-4 shrink-0 text-xs">
-                  <span
-                    className="font-bold"
-                    style={{
-                      color:
-                        activity.points.startsWith("+") ? "#00FF41" : "#FF0040",
-                    }}
-                  >
-                    {activity.points} pts
-                  </span>
-                  <span
-                    className="hidden sm:inline"
-                    style={{
-                      color: activity.elo.startsWith("+") ? "#00FF41" : "#FF0040",
-                    }}
-                  >
-                    {activity.elo} ELO
-                  </span>
-                  <span className="text-matrix-green/30">{activity.time}</span>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </Panel>
       </div>
-    </GameLayout>
   );
 }

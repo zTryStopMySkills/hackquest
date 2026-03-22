@@ -7,7 +7,7 @@ import { TESTER_CODE } from '@/lib/constants';
 
 export async function POST(req: NextRequest) {
   try {
-    const { username, email, password, agentCode } = await req.json();
+    const { username, displayName, email, password, agentCode } = await req.json();
 
     if (!username || !email || !password) {
       return NextResponse.json(
@@ -18,7 +18,21 @@ export async function POST(req: NextRequest) {
 
     if (username.length < 3 || username.length > 20) {
       return NextResponse.json(
-        { error: 'El nombre de agente debe tener entre 3 y 20 caracteres' },
+        { error: 'El nombre de usuario debe tener entre 3 y 20 caracteres' },
+        { status: 400 }
+      );
+    }
+
+    if (!/^[a-zA-Z0-9_\-]+$/.test(username)) {
+      return NextResponse.json(
+        { error: 'El usuario solo puede tener letras, números, _ y -' },
+        { status: 400 }
+      );
+    }
+
+    if (displayName && displayName.length > 32) {
+      return NextResponse.json(
+        { error: 'El nombre visible no puede superar 32 caracteres' },
         { status: 400 }
       );
     }
@@ -43,12 +57,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Ensure displayName column exists (safe no-op if already present)
+    try {
+      await prisma.$executeRaw`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "displayName" TEXT`;
+    } catch {}
+
     const passwordHash = await hashPassword(password);
     const isPremium = agentCode === TESTER_CODE;
 
     const user = await prisma.user.create({
       data: {
         username,
+        displayName: displayName || null,
         email,
         passwordHash,
         isPremium,

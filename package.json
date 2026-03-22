@@ -4,22 +4,29 @@
   "description": "HackQuest - Aprende Ciberseguridad Jugando",
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && next build",
-    "postinstall": "prisma generate",
+    "build": "prisma generate && (prisma db push --accept-data-loss || echo 'DB push skipped') && next build",
     "start": "next start",
     "lint": "next lint",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
-    "db:seed": "npx tsx prisma/seed.ts"
+    "db:seed": "npx tsx prisma/seed.ts",
+    "socket": "npx tsx server/index.ts"
   },
-  "keywords": ["cybersecurity", "hacking", "education", "game"],
+  "keywords": [
+    "cybersecurity",
+    "hacking",
+    "education",
+    "game"
+  ],
   "author": "HackQuest Team",
   "license": "MIT",
   "dependencies": {
+    "@prisma/adapter-pg": "^7.5.0",
     "@prisma/client": "^7.5.0",
     "@tailwindcss/postcss": "^4.2.2",
     "@types/node": "^25.5.0",
+    "@types/pg": "^8.20.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@xterm/addon-fit": "^0.11.0",
@@ -29,6 +36,7 @@
     "jsonwebtoken": "^9.0.3",
     "next": "^16.2.1",
     "next-auth": "^5.0.0-beta.30",
+    "pg": "^8.20.0",
     "postcss": "^8.5.8",
     "prisma": "^7.5.0",
     "react": "^19.2.4",

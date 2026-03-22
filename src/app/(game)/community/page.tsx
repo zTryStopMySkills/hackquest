@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import GameLayout from '@/components/layout/GameLayout';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -226,7 +225,7 @@ export default function CommunityPage() {
   const charsLeft = MAX_CHARS - input.length;
 
   return (
-    <GameLayout username="Agente_47" rank="PENTESTER" elo={1547} eloState="STABLE" points={12480} streak={3}>
+    <>
       <div className="flex flex-col h-[calc(100vh-64px)] p-4 gap-3">
 
         {/* Header */}
@@ -516,6 +515,6 @@ export default function CommunityPage() {
           [OK] {toast}
         </div>
       )}
-    </GameLayout>
+    </>
   );
 }

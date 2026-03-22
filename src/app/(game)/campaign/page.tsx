@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { CAMPAIGN_CHAPTERS } from '@/lib/constants';
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 type CampaignDifficulty = 'HARD' | 'MEDIUM' | 'EXPERT';
 
@@ -41,17 +41,35 @@ interface ChapterData {
   description: string;
 }
 
-const CHAPTERS_DATA: ChapterData[] = [
-  { id: 1, name: 'La Brecha', challenges: 4, status: 'completed', score: 380, description: 'Una brecha de seguridad en un hospital. Tu primera misión como agente.' },
-  { id: 2, name: 'Dentro del Muro', challenges: 4, status: 'completed', score: 340, description: 'Has penetrado el perímetro. Ahora debes moverte sin ser detectado.' },
-  { id: 3, name: 'Escalada', challenges: 5, status: 'unlocked', description: 'Necesitas más privilegios para alcanzar tu objetivo. Escala hasta root.' },
-  { id: 4, name: 'Exfiltración', challenges: 5, status: 'locked', description: 'Tienes los datos. Ahora sácalos sin dejar rastro.' },
-  { id: 5, name: 'Ghost Protocol', challenges: 6, status: 'locked', description: 'La misión final. Borra toda evidencia y desaparece como un fantasma.' },
-];
-
 export default function CampaignPage() {
+  const router = useRouter();
   const [selectedDifficulty, setSelectedDifficulty] = useState<CampaignDifficulty | null>(null);
   const [selectedChapter, setSelectedChapter] = useState<ChapterData | null>(null);
+  const [chapters, setChapters] = useState<ChapterData[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/game/campaign')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data) {
+          setChapters(data.chapters);
+          if (data.currentDifficulty) setSelectedDifficulty(data.currentDifficulty);
+        }
+        setLoading(false);
+      });
+  }, []);
+
+  async function handleDifficultySelect(diff: CampaignDifficulty) {
+    await fetch('/api/game/campaign', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ difficulty: diff }),
+    });
+    setSelectedDifficulty(diff);
+  }
+
+  const CHAPTERS_DATA = chapters;
 
   if (!selectedDifficulty) {
     return (
@@ -66,7 +84,7 @@ export default function CampaignPage() {
           {DIFFICULTIES.map((diff) => (
             <button
               key={diff.id}
-              onClick={() => setSelectedDifficulty(diff.id)}
+              onClick={() => handleDifficultySelect(diff.id)}
               className="panel p-6 text-left transition-all hover:scale-[1.02] cursor-pointer"
               style={{ borderColor: `${diff.color}30` }}
             >
@@ -190,7 +208,10 @@ export default function CampaignPage() {
               {selectedChapter.challenges} retos encadenados | Dificultad: {currentDiff.name}
             </div>
             <div className="flex gap-3">
-              <button className="btn-hack flex-1">
+              <button
+                className="btn-hack flex-1"
+                onClick={() => router.push(`/campaign/${selectedChapter.id}`)}
+              >
                 {selectedChapter.status === 'completed' ? 'REJUGAR' : 'COMENZAR MISIÓN'}
               </button>
               <button onClick={() => setSelectedChapter(null)} className="btn-danger px-4">

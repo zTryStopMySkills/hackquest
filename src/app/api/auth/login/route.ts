@@ -39,12 +39,19 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    if (user.isBanned) {
+      return NextResponse.json(
+        { error: `Cuenta suspendida. ${user.banReason ? `Motivo: ${user.banReason}` : 'Contacta con el administrador.'}` },
+        { status: 403 }
+      );
+    }
+
     await prisma.user.update({
       where: { id: user.id },
       data: { lastActiveAt: new Date() },
     });
 
-    const token = generateToken({ userId: user.id, username: user.username });
+    const token = generateToken({ userId: user.id, username: user.username, isAdmin: user.isAdmin });
     await setSessionCookie(token);
 
     return NextResponse.json({
@@ -58,6 +65,7 @@ export async function POST(req: NextRequest) {
         eloState: user.eloState,
         isPremium: user.isPremium,
         profileTitle: user.profileTitle,
+        isAdmin: user.isAdmin,
       },
     });
   } catch (error) {
