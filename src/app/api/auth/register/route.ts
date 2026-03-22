@@ -5,7 +5,35 @@ import { prisma } from '@/lib/db';
 import { hashPassword, generateToken, setSessionCookie } from '@/lib/auth';
 const TESTER_CODE = process.env.TESTER_CODE || '';
 
+// In-memory rate limiting: max 3 registrations per hour per IP
+const registerAttempts = new Map<string, { count: number; resetAt: number }>();
+
+function checkRateLimit(ip: string): { allowed: boolean; retryAfterSeconds: number } {
+  const now = Date.now();
+  const window = 60 * 60 * 1000; // 1 hour
+  const max = 3;
+
+  const entry = registerAttempts.get(ip);
+  if (!entry || now > entry.resetAt) {
+    registerAttempts.set(ip, { count: 1, resetAt: now + window });
+    return { allowed: true, retryAfterSeconds: 0 };
+  }
+  if (entry.count >= max) {
+    return { allowed: false, retryAfterSeconds: Math.ceil((entry.resetAt - now) / 1000) };
+  }
+  entry.count++;
+  return { allowed: true, retryAfterSeconds: 0 };
+}
+
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+  const { allowed, retryAfterSeconds } = checkRateLimit(ip);
+  if (!allowed) {
+    return NextResponse.json(
+      { error: `Demasiados registros desde esta IP. Espera ${Math.ceil(retryAfterSeconds / 60)} min.` },
+      { status: 429, headers: { 'Retry-After': String(retryAfterSeconds) } }
+    );
+  }
   try {
     const { username, displayName, email, password, agentCode } = await req.json();
 

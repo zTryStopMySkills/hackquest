@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Panel from "@/components/ui/Panel";
 import Link from "next/link";
+import { DAILY_BONUS } from "@/lib/constants";
 
 interface ActivityEntry {
   type: 'win' | 'loss';
@@ -64,6 +65,22 @@ const GAME_MODES = [
     locked: false,
   },
   {
+    id: "duel",
+    icon: "[⚔]",
+    title: "DUELO 1v1",
+    subtitle: "Hacker vs Hacker. Objetivos asimétricos.",
+    desc: "Tú y tu oponente atacáis objetivos distintos al mismo tiempo. Sabotea el progreso enemigo con NOISE, HONEYPOT e IDS_ALERT. El primero en capturar la flag gana.",
+    href: "/duel",
+    color: "#B347EA",
+    glow: "rgba(179,71,234,0.3)",
+    border: "#B347EA",
+    badge: "NEW",
+    badgeColor: "#B347EA",
+    players: "1v1",
+    avgTime: "~20 min",
+    locked: false,
+  },
+  {
     id: "redblue",
     icon: "[R/B]",
     title: "RED vs BLUE",
@@ -87,11 +104,32 @@ const GAME_MODES = [
 export default function PlayPage() {
   const [stats, setStats] = useState({ totalMatches: 0, wins: 0, losses: 0, perfectSolves: 0, winRate: 0 });
   const [recentActivity, setRecentActivity] = useState<ActivityEntry[]>([]);
+  const [dailyBonusClaimed, setDailyBonusClaimed] = useState<string | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingStep, setOnboardingStep] = useState(0);
 
   useEffect(() => {
     fetch('/api/game/stats').then(r => r.ok ? r.json() : null).then(d => { if (d) setStats(d); });
     fetch('/api/game/activity').then(r => r.ok ? r.json() : null).then(d => { if (d) setRecentActivity(d.activity ?? []); });
+    fetch('/api/auth/me').then(r => r.ok ? r.json() : null).then(d => {
+      if (d?.user) setDailyBonusClaimed(d.user.dailyBonusClaimed ?? null);
+    });
+    // Show onboarding only on first visit
+    if (typeof window !== 'undefined' && !localStorage.getItem('hq_onboarded')) {
+      setShowOnboarding(true);
+    }
   }, []);
+
+  const dismissOnboarding = () => {
+    localStorage.setItem('hq_onboarded', '1');
+    setShowOnboarding(false);
+  };
+
+  const dailyBonusAvailable = (() => {
+    if (!dailyBonusClaimed) return true;
+    const lastClaimed = new Date(dailyBonusClaimed);
+    return lastClaimed.toDateString() !== new Date().toDateString();
+  })();
 
   const QUICK_STATS = [
     { label: "Partidas Jugadas", value: String(stats.totalMatches), icon: "[=]" },
@@ -100,8 +138,103 @@ export default function PlayPage() {
     { label: "Victorias", value: String(stats.wins), icon: "[*]" },
   ];
 
+  const ONBOARDING_STEPS = [
+    {
+      icon: '[◈]',
+      title: 'Elige una rama',
+      desc: 'Ve a tu perfil y selecciona una rama de habilidades: Web Hacking, Redes, Criptografía, Forense o Sistemas.',
+    },
+    {
+      icon: '[>>]',
+      title: 'Completa retos',
+      desc: 'Cada reto que resuelvas te da puntos ELO y puntos de temporada. Los solves perfectos (sin pistas) multiplican la recompensa.',
+    },
+    {
+      icon: '[⚔]',
+      title: 'Compite contra otros',
+      desc: 'Úsate el modo Carrera o Duelo 1v1 para enfrentarte a otros agentes en tiempo real y subir en el ranking global.',
+    },
+  ];
+
   return (
       <div className="p-6 space-y-8">
+        {/* Onboarding modal */}
+        {showOnboarding && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+            <div
+              className="w-full max-w-md mx-4 border border-neon-amber/50 bg-military-panel p-6 font-mono"
+              style={{ boxShadow: '0 0 40px rgba(255,184,0,0.2)' }}
+            >
+              <div className="text-center mb-1">
+                <p className="text-neon-amber/60 text-[9px] tracking-[0.4em] uppercase mb-3">
+                  // BRIEFING INICIAL //
+                </p>
+                <p className="text-matrix-green text-lg font-bold" style={{ textShadow: '0 0 6px rgba(0,255,65,0.5)' }}>
+                  BIENVENIDO, AGENTE
+                </p>
+                <p className="text-matrix-green/40 text-xs mt-1">Paso {onboardingStep + 1} de {ONBOARDING_STEPS.length}</p>
+              </div>
+              <div className="my-6 border border-military-border p-4 text-center min-h-[120px] flex flex-col items-center justify-center">
+                <span className="text-3xl text-matrix-green mb-3">{ONBOARDING_STEPS[onboardingStep].icon}</span>
+                <p className="text-matrix-green font-bold text-sm mb-2">{ONBOARDING_STEPS[onboardingStep].title}</p>
+                <p className="text-matrix-green/60 text-xs leading-relaxed">{ONBOARDING_STEPS[onboardingStep].desc}</p>
+              </div>
+              <div className="flex items-center gap-2 mb-4">
+                {ONBOARDING_STEPS.map((_, i) => (
+                  <div key={i} className={`flex-1 h-0.5 transition-colors ${i <= onboardingStep ? 'bg-matrix-green' : 'bg-military-border'}`} />
+                ))}
+              </div>
+              <div className="flex gap-3">
+                {onboardingStep < ONBOARDING_STEPS.length - 1 ? (
+                  <button
+                    onClick={() => setOnboardingStep(s => s + 1)}
+                    className="flex-1 py-2.5 border border-matrix-green text-matrix-green text-xs font-bold tracking-widest uppercase hover:bg-matrix-green hover:text-military-dark transition-all"
+                  >
+                    SIGUIENTE &gt;
+                  </button>
+                ) : (
+                  <button
+                    onClick={dismissOnboarding}
+                    className="flex-1 py-2.5 border border-matrix-green bg-matrix-green text-military-dark text-xs font-bold tracking-widest uppercase"
+                    style={{ boxShadow: '0 0 10px rgba(0,255,65,0.4)' }}
+                  >
+                    [&gt;] COMENZAR MISIÓN
+                  </button>
+                )}
+                <button
+                  onClick={dismissOnboarding}
+                  className="px-4 py-2.5 border border-military-border text-matrix-green/30 text-xs font-mono hover:text-matrix-green/60 transition-colors"
+                >
+                  Saltar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Daily bonus banner */}
+        {dailyBonusClaimed !== undefined && (
+          <div
+            className={`flex items-center justify-between px-4 py-2.5 border text-xs font-mono ${
+              dailyBonusAvailable
+                ? 'border-neon-amber/40 bg-neon-amber/5 text-neon-amber'
+                : 'border-military-border bg-military-accent/30 text-matrix-green/40'
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              <span>{dailyBonusAvailable ? '[★]' : '[✓]'}</span>
+              <span>
+                {dailyBonusAvailable
+                  ? `Bonus diario disponible — +${DAILY_BONUS} pts en tu próximo solve`
+                  : 'Bonus diario reclamado — vuelve mañana'}
+              </span>
+            </span>
+            {dailyBonusAvailable && (
+              <span className="text-neon-amber/60 animate-pulse">DISPONIBLE</span>
+            )}
+          </div>
+        )}
+
         {/* Page header */}
         <div>
           <div className="flex items-center gap-2 mb-1">

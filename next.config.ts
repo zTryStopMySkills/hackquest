@@ -1,5 +1,11 @@
 import type { NextConfig } from "next";
 
+const ALLOWED_ORIGINS = [
+  "https://hackquest.vercel.app",
+  "https://www.hackquest.vercel.app",
+  "http://localhost:3000",
+];
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   typescript: {
@@ -9,8 +15,22 @@ const nextConfig: NextConfig = {
   },
   experimental: {
     serverActions: {
-      allowedOrigins: ["*"],
+      allowedOrigins: ALLOWED_ORIGINS,
     },
+  },
+  async headers() {
+    return [
+      {
+        source: "/(.*)",
+        headers: [
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "X-XSS-Protection", value: "1; mode=block" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+        ],
+      },
+    ];
   },
 };
 

@@ -4,7 +4,35 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { verifyPassword, generateToken, setSessionCookie } from '@/lib/auth';
 
+// In-memory rate limiting: max 5 attempts per 15 minutes per IP
+const loginAttempts = new Map<string, { count: number; resetAt: number }>();
+
+function checkRateLimit(ip: string): { allowed: boolean; retryAfterSeconds: number } {
+  const now = Date.now();
+  const window = 15 * 60 * 1000; // 15 min
+  const max = 5;
+
+  const entry = loginAttempts.get(ip);
+  if (!entry || now > entry.resetAt) {
+    loginAttempts.set(ip, { count: 1, resetAt: now + window });
+    return { allowed: true, retryAfterSeconds: 0 };
+  }
+  if (entry.count >= max) {
+    return { allowed: false, retryAfterSeconds: Math.ceil((entry.resetAt - now) / 1000) };
+  }
+  entry.count++;
+  return { allowed: true, retryAfterSeconds: 0 };
+}
+
 export async function POST(req: NextRequest) {
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown';
+  const { allowed, retryAfterSeconds } = checkRateLimit(ip);
+  if (!allowed) {
+    return NextResponse.json(
+      { error: `Demasiados intentos. Espera ${Math.ceil(retryAfterSeconds / 60)} min.` },
+      { status: 429, headers: { 'Retry-After': String(retryAfterSeconds) } }
+    );
+  }
   try {
     const { username, password } = await req.json();
 
